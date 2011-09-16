@@ -56,9 +56,9 @@ SC.TextArea = SC.View.extend({
     set(this, 'value', this.$().val() || null);
   },
 
-  _updateElementValue: function() {
+  _updateElementValue: SC.observer(function() {
     this.$().val(get(this, 'value'));
-  }.observes('value')
+  }, 'value')
 });
 
 SC.TextArea.KEY_EVENTS = {

@@ -32,9 +32,9 @@ module("System:run_loop() - chained binding", {
       input: 'MyApp.second',
       output: 'MyApp.second',
     
-      inputDidChange: function() {
+      inputDidChange: SC.observer(function() {
         this.set("output", this.get("input")) ;
-      }.observes("input") 
+      }, "input") 
 
     }) ;
   

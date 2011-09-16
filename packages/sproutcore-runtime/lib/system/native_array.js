@@ -132,6 +132,15 @@ SC.NativeArray.activate = function() {
   NativeArray.apply(Array.prototype);
 };
 
+/**
+  Activates SproutCore's Array extensions on a single object.
+  
+  @return {Array} receiver
+*/
+SC.A = function(ary) {
+  return NativeArray.apply(ary);
+}
+
 if (SC.EXTEND_PROTOTYPES) SC.NativeArray.activate();
 
 

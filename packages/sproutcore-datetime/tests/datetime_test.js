@@ -5,7 +5,7 @@
 
 /*globals module test ok equals same stop start */
 
-var get =SC.get, set= SC.set;
+var get =SC.get, set= SC.set, fmt = fmt;
 
 module('Time');
 
@@ -33,14 +33,14 @@ function timeShouldBeEqualToHash(t, h, message) {
     return;
   }
     
-  equals(get(t, 'year'), h.year , message.fmt('year'));
-  equals(get(t, 'month'), h.month, message.fmt('month'));
-  equals(get(t, 'day'), h.day, message.fmt('day'));
-  equals(get(t, 'hour'), h.hour, message.fmt('hour'));
-  equals(get(t, 'minute'), h.minute, message.fmt('minute'));
-  equals(get(t, 'second'), h.second, message.fmt('second'));
-  equals(get(t, 'millisecond'), h.millisecond, message.fmt('millisecond'));
-  equals(get(t, 'timezone'), h.timezone, message.fmt('timezone'));
+  equals(get(t, 'year'), h.year , fmt(message, 'year'));
+  equals(get(t, 'month'), h.month, fmt(message, 'month'));
+  equals(get(t, 'day'), h.day, fmt(message, 'day'));
+  equals(get(t, 'hour'), h.hour, fmt(message, 'hour'));
+  equals(get(t, 'minute'), h.minute, fmt(message, 'minute'));
+  equals(get(t, 'second'), h.second, fmt(message, 'second'));
+  equals(get(t, 'millisecond'), h.millisecond, fmt(message, 'millisecond'));
+  equals(get(t, 'timezone'), h.timezone, fmt(message, 'timezone'));
 }
 
 function formatTimezone(offset) {

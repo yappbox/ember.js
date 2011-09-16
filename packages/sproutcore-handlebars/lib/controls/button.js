@@ -14,7 +14,7 @@ SC.Button = SC.View.extend({
   attributeBindings: ['type'],
   type: 'button',
   
-  targetObject: function() {
+  targetObject: SC.computed(function() {
     var target = get(this, 'target');
 
     if (SC.typeOf(target) === "string") {
@@ -22,7 +22,7 @@ SC.Button = SC.View.extend({
     } else {
       return target;
     }
-  }.property('target').cacheable(),
+  }).property('target').cacheable(),
 
   mouseDown: function() {
     set(this, 'isActive', true);

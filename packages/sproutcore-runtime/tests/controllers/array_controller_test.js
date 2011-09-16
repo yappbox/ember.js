@@ -14,6 +14,8 @@ SC.MutableArrayTests.extend({
 
   newObject: function(ary) {
     var ret = ary ? ary.slice() : this.newFixture(3);
+    SC.NativeArray.apply(ret);
+
     return SC.ArrayController.create({
       content: ret
     });

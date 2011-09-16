@@ -10,6 +10,7 @@ SC.MutableArrayTests.extend({
   
   newObject: function(ary) {
     var ret = ary ? ary.slice() : this.newFixture(3);
+    SC.A(ret);
     return new SC.ArrayProxy(ret);
   },
 

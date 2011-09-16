@@ -17,9 +17,9 @@ var CountObject = SC.Object.extend({
     return this;
   },
   
-  valueDidChange: function() {
+  valueDidChange: SC.observer(function() {
     this._count++;
-  }.observes('value')
+  }, 'value')
 });
 
 module('system/mixin/binding/transform_test', {

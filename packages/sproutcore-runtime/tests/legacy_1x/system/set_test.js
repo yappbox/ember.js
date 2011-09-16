@@ -41,7 +41,7 @@ test("SC.Set.create() should create empty set", function() {
 });
 
 test("SC.Set.create([1,2,3]) should create set with three items in them", function() {
-  var set = SC.Set.create([a,b,c]) ;
+  var set = SC.Set.create(SC.A([a,b,c])) ;
   equals(set.length, 3) ;
   equals(set.contains(a), YES) ;
   equals(set.contains(b), YES) ;
@@ -312,7 +312,7 @@ test("the pop() should remove an arbitrary object from the set", function() {
 });
 
 test("should pop false and 0", function(){
-  set = SC.Set.create([false]);
+  set = SC.Set.create(SC.A([false]));
   ok(set.pop() === false, "should pop false");
 
   set = SC.Set.create([0]);

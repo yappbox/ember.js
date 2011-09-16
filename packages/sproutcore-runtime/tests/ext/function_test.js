@@ -20,9 +20,9 @@ testBoth('global observer helper takes multiple params', function(get, set) {
     
     count: 0,
     
-    foo: function() {
+    foo: SC.observer(function() {
       set(this, 'count', get(this, 'count')+1);
-    }.observes('bar', 'baz')
+    }, 'bar', 'baz')
 
   });
 

@@ -15,7 +15,7 @@
   },
   
   "dependencies:development": {
-    "spade-qunit": "~> 1.0.0"
+    "spade-qunit": "~> 1.1.0"
   },
   
   "bpm:build": {

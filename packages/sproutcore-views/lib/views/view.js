@@ -74,7 +74,7 @@ SC.View = SC.Object.extend(
     @field
     @type Function
   */
-  template: function(key, value) {
+  template: SC.computed(function(key, value) {
     if (value !== undefined) { return value; }
 
     var templateName = get(this, 'templateName'), template;
@@ -95,7 +95,7 @@ SC.View = SC.Object.extend(
 
     // return the template, or undefined if no template was found
     return template || get(this, 'defaultTemplate');
-  }.property('templateName').cacheable(),
+  }).property('templateName').cacheable(),
 
   /**
     The object from which templates should access properties.
@@ -108,9 +108,9 @@ SC.View = SC.Object.extend(
 
     @type Object
   */
-  templateContext: function(key, value) {
+  templateContext: SC.computed(function(key, value) {
     return value !== undefined ? value : this;
-  }.property().cacheable(),
+  }).property().cacheable(),
 
   /**
     If the view is currently inserted into the DOM of a parent view, this
@@ -191,9 +191,9 @@ SC.View = SC.Object.extend(
 
     @returns SC.CollectionView
   */
-  collectionView: function() {
+  collectionView: SC.computed(function() {
     return this.nearestInstanceOf(SC.CollectionView);
-  }.property().cacheable(),
+  }).property().cacheable(),
 
   /**
     Return the nearest ancestor that is a direct child of
@@ -201,9 +201,9 @@ SC.View = SC.Object.extend(
 
     @returns SC.View
   */
-  itemView: function() {
+  itemView: SC.computed(function() {
     return this.nearestChildOf(SC.CollectionView);
-  }.property().cacheable(),
+  }).property().cacheable(),
 
   /**
     Return the nearest ancestor that has the property
@@ -211,9 +211,9 @@ SC.View = SC.Object.extend(
 
     @returns SC.View
   */
-  contentView: function() {
+  contentView: SC.computed(function() {
     return this.nearestWithProperty('content');
-  }.property().cacheable(),
+  }).property().cacheable(),
 
   /**
     @private
@@ -478,13 +478,13 @@ SC.View = SC.Object.extend(
     @field
     @type DOMElement
   */
-  element: function(key, value) {
+  element: SC.computed(function(key, value) {
     if (value !== undefined) {
       return this.invokeForState('setElement', value);
     } else {
       return this.invokeForState('getElement');
     }
-  }.property('parentView', 'state').cacheable(),
+  }).property('parentView', 'state').cacheable(),
 
   /**
     Returns a jQuery object for this view's element. If you pass in a selector
@@ -613,9 +613,9 @@ SC.View = SC.Object.extend(
     @type String
     @readOnly
   */
-  elementId: function(key, value) {
+  elementId: SC.computed(function(key, value) {
     return value !== undefined ? value : SC.guidFor(this);
-  }.property().cacheable(),
+  }).property().cacheable(),
 
   /**
     Attempts to discover the element in the parent element. The default
