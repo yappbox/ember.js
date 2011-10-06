@@ -5,7 +5,7 @@
 // License:   Licensed under MIT license (see license.js)
 // ==========================================================================
 
-var get = SC.get, set = SC.set, fmt = SC.String.fmt;
+var get = SC.get, set = SC.set, fmt = SC.String.fmt, run = SC.run, typeOf = SC.typeOf;
 
 /**
   @ignore
@@ -27,6 +27,27 @@ SC.EventDispatcher = SC.Object.extend(
     @default document
   */
   rootElement: document,
+
+  /**
+    Certain events should 'lock' onto the view that receives the
+    initial event and continue to deliver related events until some
+    termination point.  This behavior is usually reflected in the DOM
+    but must also be implemented here because views do not always
+    correspond 1-1 to DOM elements and because jQuery's bubbling will
+    often end up delivering events that have already been handled to
+    parent containers.
+  */
+  LOCK_EVENTS: {
+    'mouseStart': { 
+      'mouseDragged': false, // keep lock
+      'mouseEnd':      true  // terminates lock
+    },
+
+    'touchStart': {
+      'touchChanged': false, // keep lock
+      'touchEnd':     true  // terminates lock
+    }
+  },
 
   /**
     @private
@@ -57,7 +78,10 @@ SC.EventDispatcher = SC.Object.extend(
       mouseenter  : 'mouseEnter',
       mouseleave  : 'mouseLeave',
       submit      : 'submit',
-      change      : 'change'
+      change      : 'change',
+      mousestart  : 'mouseStart'
+      mousedragged: 'mouseDragged'
+      mouseend    : 'mouseEnd'
     };
 
     jQuery.extend(events, addedEvents || {});
@@ -150,17 +174,55 @@ SC.EventDispatcher = SC.Object.extend(
 
   /** @private */
   _bubbleEvent: function(view, evt, eventName) {
-    var result = true, handler,
-        self = this;
 
-      SC.run(function() {
+    var LOCK_EVENTS  = this.LOCK_EVENTS,
+        lockedEvents = this._lockedEvents,
+        history;
+
+    function bubble() {
+      var result = true, handler;
+      run(function() {
         handler = view[eventName];
-        if (SC.typeOf(handler) === 'function') {
+        if (typeOf(handler) === 'function') {
           result = handler.call(view, evt);
         }
       });
+      return result;
+    }
+    
+    // if we are in a lock state and the event is a lock event, then
+    // deliver only to the locked view.  Note: this implementation assumes
+    // the normal browser event bubbling from jQuery will call the lock view
+    // eventually.  There are some cases (notably when the DOM for the lockView
+    // has been removed) where this may not happen.  It's an edge case that a
+    // developer will probably have to work around but the browser has the same 
+    // edge case so we are leaving it here.
+    // 
+    if (lockedEvents && lockedEvents[eventName] !== undefined) {
+      if (view === this._lockedView) {
+        ret = bubble();
+        evt.stopPropagation();
 
-    return result;
+        // cleanup if event terminates the lock
+        if (lockedEvents[eventName]) {
+          this._lockedEvents = this._lockedView = null;
+        }
+      } // else do nothing since we don't want to deliver to non-locked views
+    
+    } else {
+      
+      ret = bubble();
+
+      // lock if event handler returns anything OTHER than false (incl
+      // void)
+      if (LOCK_EVENTS[eventName] && (ret !== false)) {
+        this._lockedView = view;
+        this._lockedEvents = LOCK_EVENTS[eventName];
+        evt.stopPropagation();
+      }
+    }
+
+    return ret;
   },
 
   /** @private */

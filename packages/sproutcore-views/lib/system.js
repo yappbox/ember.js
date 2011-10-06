@@ -9,3 +9,5 @@ require("sproutcore-views/system/render_buffer");
 require("sproutcore-views/system/application");
 require("sproutcore-views/system/event_dispatcher");
 require("sproutcore-views/system/ext");
+require("sproutcore-views/system/mouse_events");
+
