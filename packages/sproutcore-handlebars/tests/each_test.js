@@ -2,7 +2,7 @@ var people, view;
 
 module("the #each helper", {
   setup: function() {
-    template = templateFor("{{#each people}}{{name}}{{/each}}");
+    template = templateFor("{{#each people}}{{name}}{{else}}No one is here{{/each}}");
     people = SC.A([{ name: "Steve Holt" }, { name: "Annabelle" }]);
 
     view = SC.View.create({
@@ -11,6 +11,10 @@ module("the #each helper", {
     });
 
     append(view);
+  },
+
+  teardown: function(){
+    if (view) { view.destroy(); }
   }
 });
 
@@ -61,5 +65,12 @@ test("it updates the view if an item is removed", function() {
   });
 
   assertHTML(view, "Annabelle")
-  view.destroy();
+});
+
+test("it shows else if there are no items", function(){
+  SC.run(function(){
+    view.set('people', SC.A());
+  });
+
+  assertHTML(view, "No one is here");
 });
