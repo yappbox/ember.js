@@ -5,24 +5,25 @@
 // License:   Licensed under MIT license (see license.js)
 // ==========================================================================
 
-require('ember-views/views/view');
+require('ember-views/views/core_view');
 var get = Ember.get, set = Ember.set, meta = Ember.meta;
 
-var childViewsProperty = Ember.computed(function() {
-  return get(this, '_childViews');
-}).property('_childViews').cacheable();
+var RENDER_TIMEOUT = 50;
 
-Ember.ContainerView = Ember.View.extend({
+Ember.ContainerView = Ember.CoreView.extend({
 
   init: function() {
-    var childViews = get(this, 'childViews');
-    Ember.defineProperty(this, 'childViews', childViewsProperty);
-
+    // Get a list of views to prepopulate the child
+    // views array with. These are provided by the user
+    // when creating a new instance of ContainerView
+    // in the form childViews: ['foo', 'bar']
     this._super();
 
-    var _childViews = get(this, '_childViews');
+    var providedChildViews = get(this, 'childViews')||[];
 
-    childViews.forEach(function(viewName, idx) {
+    var childViews = Ember.A([]);
+
+    providedChildViews.forEach(function(viewName, idx) {
       var view;
 
       if ('string' === typeof viewName) {
@@ -33,31 +34,17 @@ Ember.ContainerView = Ember.View.extend({
         view = this.createChildView(viewName);
       }
 
-      _childViews[idx] = view;
+      childViews[idx] = view;
     }, this);
-  },
 
-  /**
-    Extends Ember.View's implementation of renderToBuffer to
-    set up an array observer on the child views array. This
-    observer will detect when child views are added or removed
-    and update the DOM to reflect the mutation.
+    set(this, 'childViews', childViews);
 
-    Note that we set up this array observer in the `renderToBuffer`
-    method because any views set up previously will be rendered the first
-    time the container is rendered.
-
-    @private
-  */
-  renderToBuffer: function() {
-    var ret = this._super.apply(this, arguments);
-
-    get(this, 'childViews').addArrayObserver(this, {
+    childViews.addArrayObserver(this, {
       willChange: 'childViewsWillChange',
       didChange: 'childViewsDidChange'
     });
 
-    return ret;
+    this._renderQueue = [];
   },
 
   /**
@@ -67,13 +54,91 @@ Ember.ContainerView = Ember.View.extend({
     @private
   */
   render: function(buffer) {
-    this.forEachChildView(function(view) {
+    var childViews = get(this, 'childViews'),
+        _childViews = get(this, '_childViews'),
+        renderQueue = this._renderQueue;
+
+    var now = new Date(), view, idx, len = get(childViews, 'length');
+
+    // During first render, start rendering child views as we
+    // normally would until our timeout is hit.
+    for (idx = 0; idx < len; ) {
+      view = childViews.objectAt(idx);
+      _childViews.pushObject(view);
       view.renderToBuffer(buffer);
-    });
+
+      idx++;
+
+      if (new Date() - now > RENDER_TIMEOUT) {
+        break;
+      }
+    }
+
+    if (idx < len) {
+      for ( ; idx < len; idx++) {
+        view = childViews.objectAt(idx);
+        renderQueue.push([view, idx]);
+      }
+
+      this.scheduleRenderQueue(renderQueue);
+    }
+  },
+
+  scheduleRenderQueue: function(queue) {
+    if (this._scheduled) return;
+
+    this._scheduled = true;
+    var self = this;
+    setTimeout(function() {
+      self.processRenderQueue(queue);
+      self._scheduled = false;
+    }, 50);
+  },
+
+  processRenderQueue: function(queue) {
+    var view, tuple, viewIdx, now = new Date(), timedOut = false;
+    var _childViews = get(this, '_childViews');
+
+    while ((new Date() - now < 50) && (tuple = queue.shift())) {
+      view = tuple[0];
+      viewIdx = tuple[1];
+      shouldRemove = tuple[2];
+
+      if (shouldRemove) {
+        _childViews.replace(viewIdx, 1);
+        this.invokeForState('removeChildView', viewIdx);
+      } else {
+        _childViews.replace(viewIdx, 0, [view]);
+        if (viewIdx === 0) {
+          prev = null;
+        } else {
+          prev = _childViews.objectAt(viewIdx-1);
+        }
+        this.invokeForState('insertChildView', view, prev);
+      }
+    }
+
+    if (queue.length) {
+      this.scheduleRenderQueue(queue);
+    }
+  },
+
+  removeChild: function(view) {
+    var childViews = get(this, 'childViews');
+    childViews.removeObject(view);
+
+    return this._super(view);
   },
 
   /**
-    When the container view is destroyer, tear down the child views
+    Because child views of container views are by definition
+    not created during the render phase, there are no
+    rendered children to destroy if the view is re-rendered.
+  */
+  clearRenderedChildren: Ember.K,
+
+  /**
+    When the container view is destroyed, tear down the child views
     array observer.
 
     @private
@@ -100,7 +165,14 @@ Ember.ContainerView = Ember.View.extend({
     @param {Number} removed the number of child views removed
   **/
   childViewsWillChange: function(views, start, removed) {
-    this.invokeForState('childViewsWillChange', views, start, removed);
+    var idx, len, view, renderQueue = this._renderQueue;
+
+    for (idx = start; idx < start+removed; idx++) {
+      view = views[idx];
+      renderQueue.push([view, idx, true]);
+    }
+
+    this.scheduleRenderQueue(renderQueue);
   },
 
   /**
@@ -124,8 +196,14 @@ Ember.ContainerView = Ember.View.extend({
     // No new child views were added; bail out.
     if (added === 0) return;
 
-    // Let the current state handle the changes
-    this.invokeForState('childViewsDidChange', views, start, added);
+    var idx, len, renderQueue = this._renderQueue, view;
+
+    for (idx = start; idx < start+added; idx++) {
+      view = views.objectAt(idx);
+      renderQueue.push([view, idx]);
+    }
+
+    this.scheduleRenderQueue(renderQueue);
   },
 
   /**
@@ -143,6 +221,12 @@ Ember.ContainerView = Ember.View.extend({
     } else {
       this.get('domManager').prepend(view);
     }
+  },
+
+  rerender: function() {
+    var _childViews = get(this, '_childViews');
+    _childViews.replace(0, get(_childViews, 'length'));
+    return this._super();
   }
 });
 
@@ -152,53 +236,35 @@ Ember.ContainerView.states = {
   parent: Ember.View.states,
 
   inBuffer: {
-    childViewsDidChange: function(parentView, views, start, added) {
-      var buffer = meta(parentView)['Ember.View'].buffer,
-          startWith, prev, prevBuffer, view;
+    insertChildView: function(view, childView, prev) {
+    // childViewsDidChange: function(parentView, views, start, added) {
+      var buffer;
 
       // Determine where to begin inserting the child view(s) in the
       // render buffer.
-      if (start === 0) {
+      if (!prev) {
         // If views were inserted at the beginning, prepend the first
         // view to the render buffer, then begin inserting any
         // additional views at the beginning.
-        view = views[start];
-        startWith = start + 1;
-        view.renderToBuffer(buffer, 'prepend');
+        buffer = Ember.getMeta(view, 'Ember.View').buffer;
+        childView.renderToBuffer(buffer, 'prepend');
       } else {
         // Otherwise, just insert them at the same place as the child
         // views mutation.
-        view = views[start - 1];
-        startWith = start;
-      }
-
-      for (var i=startWith; i<start+added; i++) {
-        prev = view;
-        view = views[i];
-        prevBuffer = meta(prev)['Ember.View'].buffer;
-        view.renderToBuffer(prevBuffer, 'insertAfter');
+        buffer = Ember.getMeta(prev, 'Ember.View').buffer;
+        childView.renderToBuffer(buffer, 'insertAfter');
       }
     }
   },
 
   hasElement: {
-    childViewsWillChange: function(view, views, start, removed) {
-      for (var i=start; i<start+removed; i++) {
-        views[i].destroyElement();
-      }
+    removeChildView: function(view, childView) {
+      childView.destroyElement();
     },
 
-    childViewsDidChange: function(view, views, start, added) {
-      // If the DOM element for this container view already exists,
-      // schedule each child view to insert its DOM representation after
-      // bindings have finished syncing.
-      var prev = start === 0 ? null : views[start-1];
-
-      for (var i=start; i<start+added; i++) {
-        view = views[i];
-        this._scheduleInsertion(view, prev);
-        prev = view;
-      }
+    insertChildView: function(view, childView, prev) {
+      debugger;
+      view._scheduleInsertion(childView, prev);
     }
   }
 };

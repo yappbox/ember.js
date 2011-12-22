@@ -211,6 +211,7 @@ test("remove removes child elements from the DOM", function() {
   });
 
   ok(Ember.$("#" + get(childView, 'elementId')).length === 1, "precond - element was inserted");
+  equal(Ember.View.views[get(childView, 'elementId')], childView, "precond - view is in the the view hash");
 
   // remove parent view
   Ember.run(function() {

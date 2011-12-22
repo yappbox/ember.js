@@ -10,39 +10,12 @@ require("ember-views/system/render_buffer");
 var get = Ember.get, set = Ember.set, addObserver = Ember.addObserver;
 var getPath = Ember.getPath, meta = Ember.meta, fmt = Ember.String.fmt;
 
-var childViewsProperty = Ember.computed(function() {
-  var childViews = get(this, '_childViews');
-
-  var ret = Ember.A();
-
-  childViews.forEach(function(view) {
-    if (view.isVirtual) {
-      ret.pushObjects(get(view, 'childViews'));
-    } else {
-      ret.push(view);
-    }
-  });
-
-  return ret;
-}).property('_childViews.@each').cacheable();
-
-/**
-  @static
-
-  Global hash of shared templates. This will automatically be populated
-  by the build tools so that you can store your Handlebars templates in
-  separate files that get loaded into JavaScript at buildtime.
-
-  @type Hash
-*/
-Ember.TEMPLATES = {};
-
 /**
   @class
   @since Ember 0.9
   @extends Ember.Object
 */
-Ember.View = Ember.Object.extend(
+Ember.CoreView = Ember.Object.extend(
 /** @scope Ember.View.prototype */ {
 
   /** @private */
@@ -54,79 +27,6 @@ Ember.View = Ember.Object.extend(
     @constant
   */
   isView: YES,
-
-  // ..........................................................
-  // TEMPLATE SUPPORT
-  //
-
-  /**
-    The name of the template to lookup if no template is provided.
-
-    Ember.View will look for a template with this name in this view's
-    `templates` object. By default, this will be a global object
-    shared in `Ember.TEMPLATES`.
-
-    @type String
-    @default null
-  */
-  templateName: null,
-
-  /**
-    The hash in which to look for `templateName`.
-
-    @type Ember.Object
-    @default Ember.TEMPLATES
-  */
-  templates: Ember.TEMPLATES,
-
-  /**
-    The template used to render the view. This should be a function that
-    accepts an optional context parameter and returns a string of HTML that
-    will be inserted into the DOM relative to its parent view.
-
-    In general, you should set the `templateName` property instead of setting
-    the template yourself.
-
-    @field
-    @type Function
-  */
-  template: Ember.computed(function(key, value) {
-    if (value !== undefined) { return value; }
-
-    var templateName = get(this, 'templateName'), template;
-
-    if (templateName) { template = get(get(this, 'templates'), templateName); }
-
-    // If there is no template but a templateName has been specified,
-    // try to lookup as a spade module
-    if (!template && templateName) {
-      if ('undefined' !== require && require.exists) {
-        if (require.exists(templateName)) { template = require(templateName); }
-      }
-
-      if (!template) {
-        throw new Ember.Error(fmt('%@ - Unable to find template "%@".', [this, templateName]));
-      }
-    }
-
-    // return the template, or undefined if no template was found
-    return template || get(this, 'defaultTemplate');
-  }).property('templateName').cacheable(),
-
-  /**
-    The object from which templates should access properties.
-
-    This object will be passed to the template function each time the render
-    method is called, but it is up to the individual function to decide what
-    to do with it.
-
-    By default, this will be the view itself.
-
-    @type Object
-  */
-  templateContext: Ember.computed(function(key, value) {
-    return value !== undefined ? value : this;
-  }).cacheable(),
 
   /**
     If the view is currently inserted into the DOM of a parent view, this
@@ -163,7 +63,7 @@ Ember.View = Ember.Object.extend(
     @type Array
     @default []
   */
-  childViews: childViewsProperty,
+  childViews: null,
 
   /**
     Return the nearest ancestor that is an instance of the provided
@@ -212,81 +112,6 @@ Ember.View = Ember.Object.extend(
     }
   },
 
-  /**
-    Return the nearest ancestor that is an Ember.CollectionView
-
-    @returns Ember.CollectionView
-  */
-  collectionView: Ember.computed(function() {
-    return this.nearestInstanceOf(Ember.CollectionView);
-  }).cacheable(),
-
-  /**
-    Return the nearest ancestor that is a direct child of
-    an Ember.CollectionView
-
-    @returns Ember.View
-  */
-  itemView: Ember.computed(function() {
-    return this.nearestChildOf(Ember.CollectionView);
-  }).cacheable(),
-
-  /**
-    Return the nearest ancestor that has the property
-    `content`.
-
-    @returns Ember.View
-  */
-  contentView: Ember.computed(function() {
-    return this.nearestWithProperty('content');
-  }).cacheable(),
-
-  /**
-    @private
-
-    When the parent view changes, recursively invalidate
-    collectionView, itemView, and contentView
-  */
-  _parentViewDidChange: Ember.observer(function() {
-    this.invokeRecursively(function(view) {
-      view.propertyDidChange('collectionView');
-      view.propertyDidChange('itemView');
-      view.propertyDidChange('contentView');
-    });
-  }, '_parentView'),
-
-  /**
-    Called on your view when it should push strings of HTML into a
-    Ember.RenderBuffer. Most users will want to override the `template`
-    or `templateName` properties instead of this method.
-
-    By default, Ember.View will look for a function in the `template`
-    property and invoke it with the value of `templateContext`. The value of
-    `templateContext` will be the view itself unless you override it.
-
-    @param {Ember.RenderBuffer} buffer The render buffer
-  */
-  render: function(buffer) {
-    var template = get(this, 'template');
-
-    if (template) {
-      var context = get(this, 'templateContext'),
-          data = { view: this, buffer: buffer, isRenderData: true };
-
-      // Invoke the template with the provided template context, which
-      // is the view by default. A hash of data is also passed that provides
-      // the template with access to the view and render buffer.
-
-      // The template should write directly to the render buffer instead
-      // of returning a string.
-      var output = template(context, { data: data });
-
-      // If the template returned a string instead of writing to the buffer,
-      // push the string onto the buffer.
-      if (output !== undefined) { buffer.push(output); }
-    }
-  },
-
   invokeForState: function(name) {
     var parent = this, states = parent.states;
     var stateName = get(this, 'state'), state;
@@ -327,22 +152,6 @@ Ember.View = Ember.Object.extend(
   */
   rerender: function() {
     return this.invokeForState('rerender');
-  },
-
-  clearRenderedChildren: function() {
-    var viewMeta = meta(this)['Ember.View'],
-        lengthBefore = viewMeta.lengthBeforeRender,
-        lengthAfter  = viewMeta.lengthAfterRender;
-
-    // If there were child views created during the last call to render(),
-    // remove them under the assumption that they will be re-created when
-    // we re-render.
-
-    // VIEW-TODO: Unit test this path.
-    var childViews = get(this, '_childViews');
-    for (var i=lengthAfter-1; i>=lengthBefore; i--) {
-      if (childViews[i]) { childViews[i].destroy(); }
-    }
   },
 
   /**
@@ -1062,17 +871,13 @@ Ember.View = Ember.Object.extend(
     set(this, 'state', 'preRender');
 
     var parentView = get(this, '_parentView');
-
     this._super();
 
     // Register the view for event handling. This hash is used by
     // Ember.RootResponder to dispatch incoming events.
     Ember.View.views[get(this, 'elementId')] = this;
 
-    var childViews = [];
-    // setup child views. be sure to clone the child views array first
-    set(this, '_childViews', childViews);
-
+    set(this, '_childViews', Ember.A([]));
 
     this.classNameBindings = Ember.A(get(this, 'classNameBindings').slice());
     this.classNames = Ember.A(get(this, 'classNames').slice());
@@ -1255,7 +1060,7 @@ Ember.View = Ember.Object.extend(
   // once the view has been inserted into the DOM, legal manipulations
   // are done on the DOM element.
 
-Ember.View.reopen({
+Ember.CoreView.reopen({
   states: Ember.View.states,
   domManagerClass: Ember.Object.extend({
     view: this,
@@ -1299,8 +1104,3 @@ Ember.View.reopen({
     }
   })
 });
-
-// Create a global view hash.
-Ember.View.views = {};
-
-Ember.View.create();
