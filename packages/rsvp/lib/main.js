@@ -4,7 +4,6 @@ define("rsvp",
     "use strict";
     var browserGlobal = (typeof window !== 'undefined') ? window : {};
 
-    var MutationObserver = browserGlobal.MutationObserver || browserGlobal.WebKitMutationObserver;
     var async;
 
     if (typeof process !== 'undefined' &&
@@ -13,26 +12,6 @@ define("rsvp",
         process.nextTick(function() {
           callback.call(binding);
         });
-      };
-    } else if (MutationObserver) {
-      var queue = [];
-
-      var observer = new MutationObserver(function() {
-        var toProcess = queue.slice();
-        queue = [];
-
-        toProcess.forEach(function(tuple) {
-          var callback = tuple[0], binding = tuple[1];
-          callback.call(binding);
-        });
-      });
-
-      var element = document.createElement('div');
-      observer.observe(element, { attributes: true });
-
-      async = function(callback, binding) {
-        queue.push([callback, binding]);
-        element.setAttribute('drainQueue', 'drainQueue');
       };
     } else {
       async = function(callback, binding) {
