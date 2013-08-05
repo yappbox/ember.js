@@ -254,7 +254,7 @@ Ember.Application = Ember.Namespace.extend(
 
   /**
     Should the application initialize itself after it's created. You can
-    set this to `false` if you'd like to choose when to initialize your 
+    set this to `false` if you'd like to choose when to initialize your
     application. This defaults to `!Ember.testing`
 
     @property autoinit
@@ -518,22 +518,22 @@ Ember.Application.reopenClass({
 Ember.Application.registerInjection({
   name: 'controllers',
   injection: function(app, router, property) {
-    if (!router) { return; }
-    if (!/^[A-Z].*Controller$/.test(property)) { return; }
+    // if (!router) { return; }
+    // if (!/^[A-Z].*Controller$/.test(property)) { return; }
 
-    var name = property.charAt(0).toLowerCase() + property.substr(1),
-        controllerClass = app[property], controller;
+    // var name = property.charAt(0).toLowerCase() + property.substr(1),
+    //     controllerClass = app[property], controller;
 
-    if(!Ember.Object.detect(controllerClass)){ return; }
-    controller = app[property].create();
+    // if(!Ember.Object.detect(controllerClass)){ return; }
+    // controller = app[property].create();
 
-    router.set(name, controller);
+    // router.set(name, controller);
 
-    controller.setProperties({
-      target: router,
-      controllers: router,
-      namespace: app
-    });
+    // controller.setProperties({
+    //   target: router,
+    //   controllers: router,
+    //   namespace: app
+    // });
   }
 });
 
