@@ -1,5 +1,9 @@
 # Ember Changelog
 
+### 2.1.1-yapp-mobile-patch (Jan 6, 2016)
+
+- Incorporate changes from https://github.com/emberjs/ember.js/pull/12414
+
 ### 2.1.1 (November 16, 2015)
 
 - [#12445](https://github.com/emberjs/ember.js/pull/12445) [BUGFIX] Ensure rest arg style positionalParams can be omitted.

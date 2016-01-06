@@ -96,7 +96,7 @@ var ViewContextSupport = Mixin.create(LegacyViewSupport, {
   }),
 
   _legacyControllerDidChange: observer('controller', function() {
-    this.walkChildViews(view => view.notifyPropertyChange('controller'));
+    this.childViews.forEeach(view => view.notifyPropertyChange('controller'));
   }),
 
   _notifyControllerChange: on('parentViewDidChange', function() {
